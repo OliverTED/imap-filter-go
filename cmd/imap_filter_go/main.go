@@ -1,4 +1,4 @@
-package main
+package imap_filter_go
 
 import (
 	"fmt"
@@ -7,10 +7,10 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"imap_filter_go/internal"
+	"github.com/OliverTED/imap-filter-go/internal"
 )
 
-func main() {
+func Main() {
 	type MyArgs struct {
 		Account       string
 		Verbose       bool
