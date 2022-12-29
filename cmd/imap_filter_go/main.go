@@ -13,6 +13,7 @@ func main() {
 	type MyArgs struct {
 		Account       string
 		Verbose       bool
+		LogFilename   string
 		DebugImap     bool
 		configActions []func(run *internal.MyApp)
 		Action        func(run *internal.MyApp) error
@@ -57,6 +58,14 @@ func main() {
 				Value: false,
 				Action: func(ctx *cli.Context, v bool) error {
 					args.Verbose = v
+					return nil
+				},
+			},
+			&cli.StringFlag{
+				Name:  "logfilename",
+				Value: "",
+				Action: func(ctx *cli.Context, v string) error {
+					args.LogFilename = v
 					return nil
 				},
 			},
@@ -174,7 +183,9 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		internal.LError().Fatal(err)
 	}
-	internal.SetupLogging(args.Verbose)
+	cleanup := internal.SetupLogging(args.Verbose, args.LogFilename)
+	defer cleanup()
+
 	_, config, err := internal.ReadConfig(true)
 	if err != nil {
 		fmt.Println("error parsing config: ", err)
@@ -189,5 +200,4 @@ func main() {
 		internal.LError().Fatal(err)
 	}
 	internal.LInfo().Println("done")
-	internal.FinishLogging()
 }
