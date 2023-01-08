@@ -156,27 +156,6 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name: "add-rule",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name: "folder",
-						Action: func(ctx *cli.Context, v string) error {
-							args.configActions = append(args.configActions, func(run *internal.MyApp) {
-								run.Folder = v
-							})
-							return nil
-						},
-					},
-				},
-				Action: func(cCtx *cli.Context) error {
-					if cCtx.Args().Len() > 0 {
-						return fmt.Errorf("invalid argument: '%s'", cCtx.Args().First())
-					}
-					args.Action = func(run *internal.MyApp) error { return run.InteractiveAddRule() }
-					return nil
-				},
-			},
 		},
 	}
 
