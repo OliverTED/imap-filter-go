@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 
@@ -107,9 +108,10 @@ func main() {
 		},
 		Action: func(ctx *cli.Context) error {
 			if ctx.Args().Len() > 0 {
-				return fmt.Errorf("invalid command: '%s'", ctx.Args().First())
+				return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 			}
-			return fmt.Errorf("no command")
+			cli.ShowAppHelp(ctx)
+			return fmt.Errorf("missing command")
 		},
 		Commands: []*cli.Command{
 			{
@@ -126,9 +128,9 @@ func main() {
 						},
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					if cCtx.Args().Len() > 0 {
-						return fmt.Errorf("invalid argument: '%s'", cCtx.Args().First())
+				Action: func(ctx *cli.Context) error {
+					if ctx.Args().Len() > 0 {
+						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
 					args.Action = func(run *internal.MyApp) error { return run.Execute(true, -1) }
 					return nil
@@ -148,9 +150,9 @@ func main() {
 						},
 					},
 				},
-				Action: func(cCtx *cli.Context) error {
-					if cCtx.Args().Len() > 0 {
-						return fmt.Errorf("invalid argument: '%s'", cCtx.Args().First())
+				Action: func(ctx *cli.Context) error {
+					if ctx.Args().Len() > 0 {
+						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
 					args.Action = func(run *internal.MyApp) error { return run.Execute(false, -1) }
 					return nil
@@ -160,14 +162,23 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		internal.LError().Fatal(err)
+		internal.LError().Fatal("ERROR: ", err)
+		os.Exit(1)
 	}
 	cleanup := internal.SetupLogging(args.Verbose, args.LogFilename)
 	defer cleanup()
 
+	if args.Action == nil {
+		args.Action = func(run *internal.MyApp) error {
+			fmt.Println(app.Usage)
+			return nil
+		}
+	}
+
 	_, config, err := internal.ReadConfig(true)
 	if err != nil {
 		fmt.Println("error parsing config: ", err)
+		os.Exit(1)
 	}
 	run := internal.NewMyApp(config, args.DebugImap)
 	for _, action := range args.configActions {
@@ -176,7 +187,7 @@ func main() {
 
 	err = args.Action(run)
 	if err != nil {
-		internal.LError().Fatal(err)
+		internal.LError().Fatal("ERROR: ", err)
 	}
 	internal.LInfo().Println("done")
 }
