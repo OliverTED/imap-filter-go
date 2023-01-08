@@ -100,10 +100,12 @@ func main() {
 				},
 			},
 			&cli.StringFlag{
-				Name: "password",
+				Name: "password-eval",
 				Action: func(ctx *cli.Context, v string) error {
 					args.configActions = append(args.configActions, func(run *internal.MyApp) {
-						run.ImapPassword = func() (string, error) { return v, nil }
+						run.ImapPasswordFunc = func() (string, error) {
+							return internal.ResolvePassword(v)
+						}
 					})
 					return nil
 				},

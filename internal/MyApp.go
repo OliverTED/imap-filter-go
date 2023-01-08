@@ -3,20 +3,20 @@ package internal
 import "os"
 
 type MyApp struct {
-	ImapUser     string
-	ImapHost     string
-	ImapSsl      bool
-	ImapPort     int
-	ImapPassword func() (string, error)
-	Rules        []FilterRule
-	Folder       string
-	DebugImap    bool
-	RawConfig    *Config
-	AccountName  string
+	ImapUser         string
+	ImapHost         string
+	ImapSsl          bool
+	ImapPort         int
+	ImapPasswordFunc func() (string, error)
+	Rules            []FilterRule
+	Folder           string
+	DebugImap        bool
+	RawConfig        *Config
+	AccountName      string
 }
 
 func (r *MyApp) newConnection() (*Mailbox, error) {
-	password, err := r.ImapPassword()
+	password, err := r.ImapPasswordFunc()
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func NewMyApp(rawconfig *Config, config *AccountConfig, DebugImap bool) *MyApp {
 	r.ImapHost = config.Host
 	r.ImapPort = config.Port
 	r.ImapSsl = config.Ssl
-	r.ImapPassword = config.GetPassword
+	r.ImapPasswordFunc = config.GetPassword
 	r.Folder = config.Inbox
 	r.Rules = config.Rules
 
