@@ -180,6 +180,14 @@ func main() {
 		fmt.Println("error parsing config: ", err)
 		os.Exit(1)
 	}
+	if config.PasswordEval != "" {
+		config.Password, err = internal.ResolvePassword(config.PasswordEval)
+		if err != nil {
+			fmt.Println("error resolving password")
+			os.Exit(1)
+		}
+	}
+
 	run := internal.NewMyApp(config, args.DebugImap)
 	for _, action := range args.configActions {
 		action(run)

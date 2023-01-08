@@ -116,7 +116,7 @@ func _matches_pattern1(addrs []*imap.Address, pattern glob.Glob) bool {
 }
 
 func _matches_pattern2(data string, pattern glob.Glob) bool {
-	if pattern.Match(data) {
+	if pattern.Match(strings.ToLower(data)) {
 		// log.Println(data, pattern)
 		return true
 	}
@@ -132,12 +132,17 @@ func _contains_lower(data []string, pattern string) bool {
 	return false
 }
 
-func (r *FilterRuleMove) Matches(m *MyMessage) bool {
+func IsFlagged(m *MyMessage) bool {
 	if _contains_lower(m.Flags, "\\flagged") {
 		// LVerbose().Println("flagged: ", m)
 		// log.Println(r.who, m.Envelope, r.pattern_, m.Flags)
-		return false
+		return true
 	}
+	return false
+}
+
+func (r *FilterRuleMove) Matches(m *MyMessage) bool {
+	// LVerbose().Println(r, m)
 
 	if r.who == "from" {
 		return _matches_pattern1(m.Envelope.From, r.pattern_)
@@ -177,8 +182,9 @@ func NewFilterRule(raw string) FilterRule {
 	if res != nil {
 		return res
 	}
-
-	LError().Println("malformed rule: ", raw)
+	return nil
+}
+func NewFilterRuleRaw(raw string) FilterRule {
 	return &FilterRuleRaw{raw: raw}
 }
 
@@ -190,6 +196,7 @@ func NewFilterRuleMove(raw string) *FilterRuleMove {
 
 	who, pattern, folder := parts[0], parts[1], parts[2]
 	who = strings.ToLower(who)
+	pattern = strings.ToLower(pattern)
 
 	// folder = "TEST/" + folder
 	// pattern = strings.Replace(pattern, ".", "/", -1) // todo remove

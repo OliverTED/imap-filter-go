@@ -45,7 +45,7 @@ func (r *MyApp) Execute(dry_run bool, repeatAfterSeconds int) error {
 		for _, message := range messages {
 			possible_actions := make([]FilterRule, 0)
 			for _, rule := range r.Rules {
-				if rule.Matches(message) && rule.ShouldRun(message) {
+				if !IsFlagged(message) && rule.Matches(message) && rule.ShouldRun(message) {
 					possible_actions = append(possible_actions, rule)
 				}
 			}

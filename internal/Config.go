@@ -27,9 +27,10 @@ type AccountConfig struct {
 	Ssl          bool
 	User         string
 	Rules        []FilterRule
+	AccountName  string
 }
 
-func NewAccountConfigDefaults() *AccountConfig {
+func NewAccountConfigDefaults(accountName string) *AccountConfig {
 	return &AccountConfig{
 		Host:         "www.example.com",
 		Inbox:        "INBOX",
@@ -39,6 +40,7 @@ func NewAccountConfigDefaults() *AccountConfig {
 		Ssl:          true,
 		User:         "user",
 		Rules:        make([]FilterRule, 0),
+		AccountName:  accountName,
 	}
 }
 
@@ -78,6 +80,10 @@ func (res *AccountConfig) parse(data map[string]interface{}, normalize bool) {
 			res := make([]FilterRule, len(data))
 			for idx, rule := range data {
 				res[idx] = NewFilterRule(rule)
+				if res[idx] == nil {
+					LError().Println("malformed rule: ", rule)
+					res[idx] = NewFilterRuleRaw(rule)
+				}
 			}
 			return res
 		}
@@ -114,7 +120,15 @@ func _parse_string_array(data interface{}) ([]string, bool) {
 	return res, true
 }
 
-func readConfigRaw() (map[string]interface{}, error) {
+type Config struct {
+	Raw map[string]interface{}
+}
+
+func NewConfig(Raw map[string]interface{}) *Config {
+	return &Config{Raw: Raw}
+}
+
+func readConfigRaw() (*Config, error) {
 	LVerbose().Println("read config")
 
 	config_filename, err := ConfigFilename()
@@ -141,10 +155,10 @@ func readConfigRaw() (map[string]interface{}, error) {
 	}
 
 	// log.Println(s)
-	return s, nil
+	return &Config{Raw: s}, nil
 }
 
-func WriteConfigRaw(data map[string]interface{}) error {
+func WriteConfigRaw(data *Config) error {
 	LVerbose().Println("write config")
 
 	config_filename, err := ConfigFilename()
@@ -161,7 +175,7 @@ func WriteConfigRaw(data map[string]interface{}) error {
 		return err
 	}
 	enc.SetArraysMultiline(true)
-	enc.Encode(data)
+	enc.Encode(data.Raw)
 
 	// def get_account_name() -> str:
 	//     account_names = config.account_names()
@@ -183,7 +197,7 @@ func WriteConfigRaw(data map[string]interface{}) error {
 	return nil
 }
 
-func resolvePassword(password_eval string) (string, error) {
+func ResolvePassword(password_eval string) (string, error) {
 	LVerbose().Println("evaluate password: '" + password_eval + "'")
 
 	cmd := exec.Command("sh", "-c", password_eval)
@@ -199,15 +213,62 @@ func resolvePassword(password_eval string) (string, error) {
 	return res, err
 }
 
-func ReadConfig(normalize bool) (map[string]interface{}, *AccountConfig, error) {
+func AddNewRuleToConfig(rule string) error {
+	config, accountconfig, err := ReadConfig(false)
+	if err != nil {
+		_log_info.Panicln(err)
+	}
+
+	config_accounts, err := config.GetAccounts()
+	if err != nil {
+		return err
+	}
+	cfg := config_accounts[accountconfig.AccountName]
+
+	config_rules := cfg["rules"].([]interface{})
+	cfg["rules"] = append(config_rules, rule)
+
+	err = WriteConfigRaw(config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type GMap map[string]interface{}
+
+func (c *Config) GetAccounts() (map[string]map[string]interface{}, error) {
+	accounts__, valid := c.Raw["account"]
+	if !valid {
+		return nil, errors.New("config format invalid / reading accounts")
+	}
+	accounts_, valid := accounts__.(map[string]interface{})
+	if !valid {
+		return nil, errors.New("config format invalid / reading accounts 2")
+	}
+
+	res := make(map[string]map[string]interface{})
+	for account := range accounts_ {
+		settings, valid := accounts_[account].(map[string]interface{})
+		if !valid {
+			return nil, errors.New("config format invalid / reading account: " + account)
+		}
+		res[account] = settings
+	}
+
+	return res, nil
+}
+
+func ReadConfig(normalize bool) (*Config, *AccountConfig, error) {
 	data, err := readConfigRaw()
 	if err != nil {
 		return data, nil, err
 	}
 
-	accounts_, valid := data["account"].(map[string]interface{})
-	if !valid {
-		return data, nil, errors.New("config format invalid")
+	accounts_, err := data.GetAccounts()
+	if err != nil {
+		return data, nil, err
 	}
 
 	accounts := make([]string, 0)
@@ -224,25 +285,18 @@ func ReadConfig(normalize bool) (map[string]interface{}, *AccountConfig, error) 
 	}
 	account := accounts[0]
 
-	settings, valid := accounts_[account].(map[string]interface{})
+	settings, valid := accounts_[account]
 	if !valid {
 		return data, nil, errors.New("config format invalid")
 	}
 
-	res := NewAccountConfigDefaults()
+	res := NewAccountConfigDefaults(account)
 	res.parse(settings, normalize)
 
 	// log.Println(res)
 
 	if normalize {
 		WriteConfigRaw(data)
-	}
-
-	if res.PasswordEval != "" {
-		res.Password, err = resolvePassword(res.PasswordEval)
-		if err != nil {
-			return data, nil, err
-		}
 	}
 
 	LVerbose().Printf("loaded %d rules\n", len(res.Rules))
