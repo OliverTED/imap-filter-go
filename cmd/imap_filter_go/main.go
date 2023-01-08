@@ -16,6 +16,8 @@ func main() {
 		Verbose       bool
 		LogFilename   string
 		DebugImap     bool
+		Interactive   bool
+		Rule          string
 		configActions []func(run *internal.MyApp)
 		Action        func(run *internal.MyApp) error
 	}
@@ -100,7 +102,7 @@ func main() {
 				Name: "password",
 				Action: func(ctx *cli.Context, v string) error {
 					args.configActions = append(args.configActions, func(run *internal.MyApp) {
-						run.ImapPassword = v
+						run.ImapPassword = func() (string, error) { return v, nil }
 					})
 					return nil
 				},
@@ -170,12 +172,37 @@ func main() {
 							return nil
 						},
 					},
+					&cli.BoolFlag{
+						Name:  "interactive",
+						Value: false,
+						Action: func(ctx *cli.Context, v bool) error {
+							args.Interactive = v
+							return nil
+						},
+					},
+					&cli.StringFlag{
+						Name: "rule",
+						Action: func(ctx *cli.Context, v string) error {
+							args.Rule = v
+							return nil
+						},
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.CmdAddRuleInteractive() }
+					if args.Interactive && args.Rule != "" {
+						return fmt.Errorf("--interactive not valid with --rule")
+					}
+					if args.Interactive {
+						args.Action = func(run *internal.MyApp) error { return run.CmdAddRuleInteractive() }
+					} else if args.Rule != "" {
+						args.Action = func(run *internal.MyApp) error { return run.CmdAddRule(args.Rule) }
+					} else {
+						return fmt.Errorf("need either --interactive or --rule")
+					}
+
 					return nil
 				},
 			},
@@ -196,20 +223,13 @@ func main() {
 		}
 	}
 
-	_, config, err := internal.ReadConfig(true)
+	rawconfig, accountconfig, err := internal.ReadConfig(false)
 	if err != nil {
 		fmt.Println("error parsing config: ", err)
 		os.Exit(1)
 	}
-	if config.PasswordEval != "" {
-		config.Password, err = internal.ResolvePassword(config.PasswordEval)
-		if err != nil {
-			fmt.Println("error resolving password")
-			os.Exit(1)
-		}
-	}
 
-	run := internal.NewMyApp(config, args.DebugImap)
+	run := internal.NewMyApp(rawconfig, accountconfig, args.DebugImap)
 	for _, action := range args.configActions {
 		action(run)
 	}

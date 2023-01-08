@@ -30,6 +30,17 @@ type AccountConfig struct {
 	AccountName  string
 }
 
+func (config *AccountConfig) GetPassword() (string, error) {
+	if config.PasswordEval != "" && config.Password == "" {
+		password, err := ResolvePassword(config.PasswordEval)
+		if err != nil {
+			return "", err
+		}
+		config.Password = password
+	}
+	return config.Password, nil
+}
+
 func NewAccountConfigDefaults(accountName string) *AccountConfig {
 	return &AccountConfig{
 		Host:         "www.example.com",
@@ -79,11 +90,12 @@ func (res *AccountConfig) parse(data map[string]interface{}, normalize bool) {
 		parse_rules := func(data []string) []FilterRule {
 			res := make([]FilterRule, len(data))
 			for idx, rule := range data {
-				res[idx] = NewFilterRule(rule)
-				if res[idx] == nil {
-					LError().Println("malformed rule: ", rule)
-					res[idx] = NewFilterRuleRaw(rule)
+				rule_, err := NewFilterRule(rule)
+				if err != nil {
+					LError().Println("malformed rule: ", rule, err)
+					rule_ = NewFilterRuleRaw(rule)
 				}
+				res[idx] = rule_
 			}
 			return res
 		}
@@ -213,20 +225,20 @@ func ResolvePassword(password_eval string) (string, error) {
 	return res, err
 }
 
-func AddNewRuleToConfig(rule string) error {
-	config, accountconfig, err := ReadConfig(false)
-	if err != nil {
-		_log_info.Panicln(err)
-	}
+func AddNewRuleToConfig(config *Config, accountName string, rule FilterRule) error {
+	// config, accountconfig, err := ReadConfig(false)
+	// if err != nil {
+	// 	_log_info.Panicln(err)
+	// }
 
 	config_accounts, err := config.GetAccounts()
 	if err != nil {
 		return err
 	}
-	cfg := config_accounts[accountconfig.AccountName]
+	cfg := config_accounts[accountName]
 
 	config_rules := cfg["rules"].([]interface{})
-	cfg["rules"] = append(config_rules, rule)
+	cfg["rules"] = append(config_rules, rule.Encode())
 
 	err = WriteConfigRaw(config)
 	if err != nil {

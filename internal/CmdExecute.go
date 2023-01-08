@@ -17,9 +17,12 @@ func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
 	}
 
 	for {
-		conn := r.NewConnection()
+		conn, err := r.NewConnection()
+		if err != nil {
+			return err
+		}
 
-		err := conn.connect()
+		err = conn.connect()
 		if err != nil {
 			return err
 		}
@@ -71,7 +74,7 @@ func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
 		for _, action := range todo_actions {
 			LInfo().Println(action.rule.Describe(action.message))
 			if !dry_run {
-				action.rule.Execute(&conn, action.message)
+				action.rule.Execute(conn, action.message)
 			}
 		}
 

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,8 @@ type State struct {
 	folders            []string
 	Preselect          string
 	Filter             string
+	err                error
+	myApp              *MyApp
 }
 
 // var attributes = []string{"from", "to", "replyto", "cc", "bcc", "subject"}
@@ -100,10 +103,10 @@ func (state *State) showAddRule(folders []string, messages []*MyMessage) tview.P
 	preview := form.GetFormItemByLabel("Matching Messages").(*tview.TextView)
 	update_preview := func() {
 		matching_messages := []string{}
-		res := NewFilterRule(state.Filter)
+		res, err := NewFilterRule(state.Filter)
 		idx := 1
-		if res == nil {
-			matching_messages = append(matching_messages, "malformed rule")
+		if err != nil {
+			matching_messages = append(matching_messages, fmt.Sprintf("malformed rule: %s", err.Error()))
 		} else {
 			for _, m := range state.messages {
 				if res.Matches(m) {
@@ -128,7 +131,7 @@ func (state *State) showAddRule(folders []string, messages []*MyMessage) tview.P
 	})
 
 	form.AddButton("Add Rule to Config", func() {
-		AddNewRuleToConfig(state.Filter)
+		state.err = state.myApp.CmdAddRule(state.Filter)
 		state.app.Stop()
 	})
 
@@ -142,9 +145,12 @@ func (s *State) Render() {
 }
 
 func (r *MyApp) CmdAddRuleInteractive() error {
-	conn := r.NewConnection()
+	conn, err := r.NewConnection()
+	if err != nil {
+		return err
+	}
 
-	err := conn.connect()
+	err = conn.connect()
 	if err != nil {
 		return err
 	}
@@ -159,7 +165,7 @@ func (r *MyApp) CmdAddRuleInteractive() error {
 
 	app := tview.NewApplication()
 
-	state := State{messages: messages, folders: folders, app: app}
+	state := State{messages: messages, folders: folders, app: app, myApp: r}
 	state.Render()
 
 	// app.EnableMouse(true)
@@ -168,5 +174,17 @@ func (r *MyApp) CmdAddRuleInteractive() error {
 		return err
 	}
 
+	return state.err
+}
+
+func (r *MyApp) CmdAddRule(rule string) error {
+	rule_, err := NewFilterRule(rule)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Error parsing rule: %s; %s", rule, err.Error()))
+	}
+	err = AddNewRuleToConfig(r.RawConfig, r.AccountName, rule_)
+	if err != nil {
+		return err
+	}
 	return nil
 }

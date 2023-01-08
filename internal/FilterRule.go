@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -177,21 +178,21 @@ type FilterRule interface {
 	Matches(m *MyMessage) bool
 }
 
-func NewFilterRule(raw string) FilterRule {
-	res := NewFilterRuleMove(raw)
-	if res != nil {
-		return res
+func NewFilterRule(raw string) (FilterRule, error) {
+	res, err := NewFilterRuleMove(raw)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return res, nil
 }
 func NewFilterRuleRaw(raw string) FilterRule {
 	return &FilterRuleRaw{raw: raw}
 }
 
-func NewFilterRuleMove(raw string) *FilterRuleMove {
+func NewFilterRuleMove(raw string) (*FilterRuleMove, error) {
 	parts := strings.Split(raw, ":")
 	if len(parts) != 3 {
-		return nil
+		return nil, errors.New("rule must contain exactly 3 ':'")
 	}
 
 	who, pattern, folder := parts[0], parts[1], parts[2]
@@ -203,14 +204,14 @@ func NewFilterRuleMove(raw string) *FilterRuleMove {
 	// folder = strings.Replace(folder, ".", "/", -1) // todo remove
 
 	if !(who == "from" || who == "to" || who == "replyto" || who == "cc" || who == "bcc" || who == "subject") {
-		return nil
+		return nil, errors.New(fmt.Sprintf("rule: 'who' part is not of from,to,replyto,cc,bcc,subject (%s)", who))
 	}
 
 	pattern_, err := glob.Compile(pattern)
 	if err != nil {
-		return nil
+		return nil, errors.New(fmt.Sprintf("could not parse glob pattern: '%s'", pattern))
 	}
 
 	//     if who not in ["from", "to", "replyto", "cc", "bcc", "subject"]:
-	return &FilterRuleMove{who: who, pattern: pattern, folder: folder, pattern_: pattern_}
+	return &FilterRuleMove{who: who, pattern: pattern, folder: folder, pattern_: pattern_}, nil
 }
