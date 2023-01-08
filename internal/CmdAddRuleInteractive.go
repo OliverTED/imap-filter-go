@@ -8,17 +8,8 @@ import (
 	"github.com/rivo/tview"
 )
 
-type StateId int64
-
-const (
-	AddRule StateId = iota
-	SelectMessage
-	SelectFolder
-)
-
 type State struct {
 	app                *tview.Application
-	id                 StateId
 	selected_message   *MyMessage
 	selected_folder    string
 	selected_attribute string
@@ -29,7 +20,7 @@ type State struct {
 	Filter             string
 }
 
-var attributes = []string{"from", "to", "replyto", "cc", "bcc", "subject"}
+// var attributes = []string{"from", "to", "replyto", "cc", "bcc", "subject"}
 
 func EmailPatterns(addr *imap.Address) []string {
 	res := []string{
@@ -145,12 +136,9 @@ func (state *State) showAddRule(folders []string, messages []*MyMessage) tview.P
 }
 
 func (s *State) Render() {
-	if s.id == AddRule {
-		cell := s.showAddRule(s.folders, s.messages)
-		s.app.SetRoot(cell, true)
-		return
-	}
-	s.app.Stop()
+	cell := s.showAddRule(s.folders, s.messages)
+	s.app.SetRoot(cell, true)
+	return
 }
 
 func (r *MyApp) CmdAddRuleInteractive() error {
