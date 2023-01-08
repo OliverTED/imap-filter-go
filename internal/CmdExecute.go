@@ -1,11 +1,10 @@
 package internal
 
 import (
-	"os"
 	"time"
 )
 
-func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
+func (r *MyApp) CmdExecute(connect func() (*Mailbox, error), folder string, dry_run bool, repeatAfterSeconds int, rules []FilterRule) error {
 	type TodoAction struct {
 		rule    FilterRule
 		message *MyMessage
@@ -17,28 +16,19 @@ func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
 	}
 
 	for {
-		conn, err := r.NewConnection()
-		if err != nil {
-			return err
-		}
-
-		err = conn.connect()
+		conn, err := connect()
 		if err != nil {
 			return err
 		}
 		defer conn.close()
 
-		if r.DebugImap {
-			conn._connection.SetDebug(os.Stdout)
-		}
-
-		err, messages := conn.yield_messages(r.Folder)
+		err, messages := conn.yield_messages(folder)
 		if err != nil {
 			return err
 		}
 
 		if len(messages) == 0 {
-			LInfo().Println("no messages in the inbox, ", r.Folder)
+			LInfo().Println("no messages in the inbox, ", folder)
 			return nil
 		}
 
@@ -47,7 +37,7 @@ func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
 		todo_actions := make([]TodoAction, 0)
 		for _, message := range messages {
 			possible_actions := make([]FilterRule, 0)
-			for _, rule := range r.Rules {
+			for _, rule := range rules {
 				if !IsFlagged(message) && rule.Matches(message) && rule.ShouldRun(message) {
 					possible_actions = append(possible_actions, rule)
 				}

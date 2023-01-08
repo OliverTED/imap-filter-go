@@ -20,6 +20,7 @@ func main() {
 		Rule          string
 		configActions []func(run *internal.MyApp)
 		Action        func(run *internal.MyApp) error
+		ExtraRules    []internal.FilterRule
 	}
 
 	args := MyArgs{
@@ -129,12 +130,25 @@ func main() {
 							return nil
 						},
 					},
+					&cli.StringFlag{
+						Name: "rule",
+						Action: func(ctx *cli.Context, v string) error {
+							rule_, err := internal.NewFilterRule(v)
+							if err != nil {
+								return err
+							}
+							args.ExtraRules = append(args.ExtraRules, rule_)
+							return nil
+						},
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.CmdExecute(true, -1) }
+					args.Action = func(run *internal.MyApp) error {
+						return run.CmdExecute(run.Connect, run.Folder, true, -1, append(run.Rules, args.ExtraRules...))
+					}
 					return nil
 				},
 			},
@@ -151,12 +165,25 @@ func main() {
 							return nil
 						},
 					},
+					&cli.StringFlag{
+						Name: "rule",
+						Action: func(ctx *cli.Context, v string) error {
+							rule_, err := internal.NewFilterRule(v)
+							if err != nil {
+								return err
+							}
+							args.ExtraRules = append(args.ExtraRules, rule_)
+							return nil
+						},
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.CmdExecute(false, -1) }
+					args.Action = func(run *internal.MyApp) error {
+						return run.CmdExecute(run.Connect, run.Folder, false, -1, append(run.Rules, args.ExtraRules...))
+					}
 					return nil
 				},
 			},
@@ -196,9 +223,13 @@ func main() {
 						return fmt.Errorf("--interactive not valid with --rule")
 					}
 					if args.Interactive {
-						args.Action = func(run *internal.MyApp) error { return run.CmdAddRuleInteractive() }
+						args.Action = func(run *internal.MyApp) error {
+							return run.CmdAddRuleInteractive(run.Connect)
+						}
 					} else if args.Rule != "" {
-						args.Action = func(run *internal.MyApp) error { return run.CmdAddRule(args.Rule) }
+						args.Action = func(run *internal.MyApp) error {
+							return run.CmdAddRule(args.Rule)
+						}
 					} else {
 						return fmt.Errorf("need either --interactive or --rule")
 					}

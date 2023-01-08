@@ -1,5 +1,7 @@
 package internal
 
+import "os"
+
 type MyApp struct {
 	ImapUser     string
 	ImapHost     string
@@ -13,7 +15,7 @@ type MyApp struct {
 	AccountName  string
 }
 
-func (r *MyApp) NewConnection() (*Mailbox, error) {
+func (r *MyApp) newConnection() (*Mailbox, error) {
 	password, err := r.ImapPassword()
 	if err != nil {
 		return nil, err
@@ -27,6 +29,22 @@ func (r *MyApp) NewConnection() (*Mailbox, error) {
 	}
 
 	return &mb, nil
+}
+func (r *MyApp) Connect() (*Mailbox, error) {
+	conn, err := r.newConnection()
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.connect()
+	if err != nil {
+		return nil, err
+	}
+
+	if r.DebugImap {
+		conn._connection.SetDebug(os.Stdout)
+	}
+	return conn, nil
 }
 
 func NewMyApp(rawconfig *Config, config *AccountConfig, DebugImap bool) *MyApp {

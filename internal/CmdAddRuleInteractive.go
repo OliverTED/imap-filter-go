@@ -144,13 +144,8 @@ func (s *State) Render() {
 	return
 }
 
-func (r *MyApp) CmdAddRuleInteractive() error {
-	conn, err := r.NewConnection()
-	if err != nil {
-		return err
-	}
-
-	err = conn.connect()
+func (r *MyApp) CmdAddRuleInteractive(connect func() (*Mailbox, error)) error {
+	conn, err := connect()
 	if err != nil {
 		return err
 	}
