@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func (r *MyApp) Execute(dry_run bool, repeatAfterSeconds int) error {
+func (r *MyApp) CmdExecute(dry_run bool, repeatAfterSeconds int) error {
 	type TodoAction struct {
 		rule    FilterRule
 		message *MyMessage

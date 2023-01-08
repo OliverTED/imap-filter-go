@@ -132,7 +132,7 @@ func main() {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.Execute(true, -1) }
+					args.Action = func(run *internal.MyApp) error { return run.CmdExecute(true, -1) }
 					return nil
 				},
 			},
@@ -154,7 +154,7 @@ func main() {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.Execute(false, -1) }
+					args.Action = func(run *internal.MyApp) error { return run.CmdExecute(false, -1) }
 					return nil
 				},
 			},
@@ -175,7 +175,7 @@ func main() {
 					if ctx.Args().Len() > 0 {
 						return fmt.Errorf("invalid command: '%s'", strings.Join(ctx.Args().Slice(), " "))
 					}
-					args.Action = func(run *internal.MyApp) error { return run.InteractiveAddRule() }
+					args.Action = func(run *internal.MyApp) error { return run.CmdAddRuleInteractive() }
 					return nil
 				},
 			},

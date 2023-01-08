@@ -153,7 +153,7 @@ func (s *State) Render() {
 	s.app.Stop()
 }
 
-func (r *MyApp) InteractiveAddRule() error {
+func (r *MyApp) CmdAddRuleInteractive() error {
 	conn := r.NewConnection()
 
 	err := conn.connect()
