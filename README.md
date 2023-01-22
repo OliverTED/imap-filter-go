@@ -1,14 +1,13 @@
 ## Imap-Filter: Filter an IMAP Mailbox from cli/mutt/etc
 
-'imap-filter-go' is a simple cli tool to filter email messages on an
-imap server.
+'imap-filter-go' is a simple cli tool to log into an imap server and rule based filter the email messages (such as moving all messages from a certain sender to a specific folder)
 
 ### Install
 
 Install via golang's install directive:
 
 ```
-go install github.com/oliverted/imap_filter_go
+go install github.com/OliverTED/imap-filter-go@latest
 ```
 
 The executable will be in '~/go/bin'.
