@@ -1,4 +1,4 @@
-module github.com/OliverTED/imap-filter-go@latest
+module github.com/OliverTED/imap-filter-go
 
 go 1.19
 
